@@ -1,0 +1,47 @@
+# TestRunner - A simple C++ unit test framework
+# Copyright (C) 2020 Andre Eisenbach
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# See LICENSE for a copy of the GNU General Public License or see
+# it online at <http://www.gnu.org/licenses/>.
+
+cxx = clang++
+ar = ar
+
+builddir = build
+
+cflags = -Os -g -std=c++17 -Wextra -Wall -pedantic $
+    -ffunction-sections -fdata-sections -fmerge-all-constants $
+    -I.
+ldflags = -Wl,--gc-sections -Wl,--relax -L$builddir
+
+rule cxx
+    command = $cxx -MMD -MF $out.d $cflags -c $in -o $out
+    description = C++ $out
+    depfile = $out.d
+
+rule link
+    command = $cxx $cflags $ldflags -o $out $in $libs
+    description = LNK $out
+
+rule ar
+    command = $ar rcs $out $in
+    description = LIB $out
+
+rule run
+    command = $in
+    description = RUN $in
+
+build run_tests: run $builddir/test
+
+build $builddir/test: link $builddir/test.o 
+
+build $builddir/test.o: cxx test.cc
