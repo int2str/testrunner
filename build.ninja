@@ -15,13 +15,16 @@
 
 cxx = clang++
 ar = ar
+ctidy = clang-tidy
 
 builddir = build
 
-cflags = -Os -g -std=c++17 -Wextra -Wall -pedantic $
+cflags = -Os -g -std=c++17 -Wextra -Wall -Wpedantic $
     -ffunction-sections -fdata-sections -fmerge-all-constants $
     -I.
 ldflags = -Wl,--gc-sections -Wl,--relax -L$builddir
+
+tidyflags = -checks=-*,clang-analyzer-*,-clang-analyzer-cplusplus*
 
 rule cxx
     command = $cxx -MMD -MF $out.d $cflags -c $in -o $out
@@ -40,7 +43,13 @@ rule run
     command = $in
     description = RUN $in
 
+rule tdy
+    command = $ctidy $in $tidyflags -- $cflags
+    description = TDY $in
+
 build run_tests: run $builddir/test
+
+build tidy: tdy test.cc
 
 build $builddir/test: link $builddir/test.o 
 
