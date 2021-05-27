@@ -143,6 +143,12 @@ class Runner {
     if (!((a) == (b))) throw("EXPECT_EQ expected " #a " to equal " #b " ..."); \
   } while (0)
 
+#define EXPECT_NE(a, b)                                               \
+  do {                                                                \
+    if (((a) == (b)))                                                 \
+      throw("EXPECT_NE expected " #a " to be unequal to " #b " ..."); \
+  } while (0)
+
 #define FAIL(message) \
   do {                \
     throw(message);   \

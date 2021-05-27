@@ -27,6 +27,9 @@ TEST_MUST_FAIL(AssertFalseFail) { ASSERT_FALSE(true); }
 TEST(ExpectEq) { EXPECT_EQ(42, 42); }
 TEST_MUST_FAIL(ExpectEqFail) { EXPECT_EQ('A', 'B'); }
 
-TEST_MUST_FAIL(ForcedFail) { FAIL("Fore fail"); }
+TEST(ExpectNe) { EXPECT_NE(41, 42); }
+TEST_MUST_FAIL(ExpectNeFail) { EXPECT_NE('A', 'A'); }
+
+TEST_MUST_FAIL(ForcedFail) { FAIL("Forced fail"); }
 
 #endif  // TESTRUNNER_SELFTEST_H
