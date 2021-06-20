@@ -149,6 +149,17 @@ class Runner {
       throw("EXPECT_NE expected " #a " to be unequal to " #b " ..."); \
   } while (0)
 
+#define EXPECT_THROW(st)                                          \
+  do {                                                            \
+    bool did_throw = false;                                       \
+    try {                                                         \
+      st;                                                         \
+    } catch (...) {                                               \
+      did_throw = true;                                           \
+    }                                                             \
+    if (!did_throw) throw "EXPECT_THROW statement did not throw"; \
+  } while (0)
+
 #define FAIL(message) \
   do {                \
     throw(message);   \
