@@ -32,4 +32,7 @@ TEST_MUST_FAIL(ExpectNeFail) { EXPECT_NE('A', 'A'); }
 
 TEST_MUST_FAIL(ForcedFail) { FAIL("Forced fail"); }
 
+TEST(ExpectThrow) { EXPECT_THROW(throw true); }
+TEST_MUST_FAIL(ExpectThrowFail) { EXPECT_THROW(); }
+
 #endif  // TESTRUNNER_SELFTEST_H
