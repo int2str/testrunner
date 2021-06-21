@@ -16,6 +16,6 @@
 #ifndef TESTRUNNER_MAIN_H
 #define TESTRUNNER_MAIN_H
 
-int main() { return TestRunner::Runner::get().runAllTests(); }
+int main() { return (TestRunner::Runner::get().runAllTests() == 0 ? 0 : 1); }
 
 #endif  // TESTRUNNER_MAIN_H
