@@ -30,7 +30,7 @@ class Test {
         file_(file),
         line_(line),
         expected_to_pass_(expected_to_pass) {}
-  virtual ~Test(){};
+  virtual ~Test() = default;
 
   void run() const {
     std::cout << getName() << " ... ";
@@ -50,16 +50,18 @@ class Test {
         std::cout << "\033[31mFAIL\033[0m\n";
         std::cerr << getFile() << ":" << getLine() << " " << err << "\n";
         throw(err);
-      } else {
-        std::cout << "\033[32mPASS (failed as expeced)\033[0m\n";
       }
+
+      std::cout << "\033[32mPASS (failed as expeced)\033[0m\n";
     }
   }
 
-  constexpr std::string_view getName() const { return name_; }
-  constexpr std::string_view getFile() const { return file_; }
-  constexpr size_t getLine() const { return line_; }
-  constexpr bool isExpectedToPass() const { return expected_to_pass_; }
+  [[nodiscard]] constexpr std::string_view getName() const { return name_; }
+  [[nodiscard]] constexpr std::string_view getFile() const { return file_; }
+  [[nodiscard]] constexpr size_t getLine() const { return line_; }
+  [[nodiscard]] constexpr bool isExpectedToPass() const {
+    return expected_to_pass_;
+  }
 
  protected:
   virtual void run_internal() const = 0;
@@ -104,7 +106,7 @@ class Runner {
   }
 
  private:
-  Runner() {}
+  Runner() = default;
   std::vector<const Test *> tests_;
 };
 
