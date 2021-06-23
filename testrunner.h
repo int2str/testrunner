@@ -17,7 +17,5 @@
 #define TESTRUNNER_H
 
 #include "testrunner_core.h"
-#include "testrunner_main.h"
-#include "testrunner_selftest.h"
 
 #endif  // TESTRUNNER_H

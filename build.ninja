@@ -51,8 +51,8 @@ build run_tests: run $builddir/test
 
 default run_tests
 
-build tidy: tdy test.cc
+build tidy: tdy testrunner_main.cc
 
-build $builddir/test: link $builddir/test.o 
+build $builddir/test: link $builddir/testrunner_main.o
 
-build $builddir/test.o: cxx test.cc
+build $builddir/testrunner_main.o: cxx testrunner_main.cc
