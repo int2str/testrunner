@@ -20,12 +20,18 @@
 #include <string_view>
 #include <vector>
 
+namespace {
+constexpr const char *GREEN = "\033[32m";
+constexpr const char *RED = "\033[31m";
+constexpr const char *NOCOL = "\033[0m";
+}  // namespace
+
 namespace TestRunner {
 
 class Test {
  public:
-  Test(const std::string_view &name, const std::string_view &file, size_t line,
-       bool expected_to_pass = true)
+  Test(std::string_view name, std::string_view file, size_t line,
+       bool expected_to_pass)
       : name_(name),
         file_(file),
         line_(line),
@@ -33,34 +39,29 @@ class Test {
   virtual ~Test() = default;
 
   void run() const {
-    std::cout << getName() << " ... ";
-    try {
-      run_internal();
+    std::cout << name_ << " ... ";
 
-      if (isExpectedToPass()) {
-        std::cout << "\033[32mPASS\033[0m\n";
-      } else {
-        std::cout << "\033[31mPASSED - It shouldn't have!\033[0m\n";
-        std::cerr << getFile() << ":" << getLine() << " test failed\n";
-        throw("Test should have failed ...");
-      }
-
-    } catch (const char *err) {
-      if (isExpectedToPass()) {
-        std::cout << "\033[31mFAIL\033[0m\n";
-        std::cerr << getFile() << ":" << getLine() << " " << err << "\n";
+    if (expected_to_pass_) {
+      try {
+        run_internal();
+        std::cout << GREEN << "PASS" << NOCOL << "\n";
+      } catch (const char *err) {
+        std::cout << RED << "FAIL" << NOCOL << "\n";
+        std::cerr << file_ << ":" << line_ << " " << err << "\n";
         throw(err);
       }
 
-      std::cout << "\033[32mPASS (failed as expeced)\033[0m\n";
+    } else {
+      try {
+        run_internal();
+        std::cout << RED << "PASSED - It shouldn't have!" << NOCOL << "\n";
+        std::cerr << file_ << ":" << line_ << " test failed\n";
+      } catch (const char *) {
+        std::cout << GREEN << "PASS (failed as expeced)" << NOCOL << "\n";
+        return;
+      }
+      throw("Test should have failed ...");
     }
-  }
-
-  [[nodiscard]] constexpr std::string_view getName() const { return name_; }
-  [[nodiscard]] constexpr std::string_view getFile() const { return file_; }
-  [[nodiscard]] constexpr size_t getLine() const { return line_; }
-  [[nodiscard]] constexpr bool isExpectedToPass() const {
-    return expected_to_pass_;
   }
 
  protected:
@@ -74,12 +75,14 @@ class Test {
 
 class Runner {
  public:
+  static void add(const Test *p_test) { get().tests_.push_back(p_test); }
+  static size_t run() { return get().runAllTests(); }
+
+ private:
   static Runner &get() {
     static Runner testRunner;
     return testRunner;
   }
-
-  void registerTest(const Test *p_test) { tests_.push_back(p_test); }
 
   size_t runAllTests() {
     size_t passed = 0;
@@ -98,14 +101,13 @@ class Runner {
     if (passed == tests_.size()) {
       std::cout << "All done. " << passed << " test(s) passed.\n";
     } else {
-      std::cout << static_cast<int>(passed) << " test(s) passed, "
-                << static_cast<int>(tests_.size() - passed) << " failed.\n";
+      std::cout << passed << " test(s) passed, " << (tests_.size() - passed)
+                << " failed.\n";
     }
 
     return tests_.size() - passed;
   }
 
- private:
   Runner() = default;
   std::vector<const Test *> tests_;
 };
@@ -113,7 +115,7 @@ class Runner {
 #define TEST(NAME)                                   \
   struct NAME : TestRunner::Test {                   \
     NAME() : Test(#NAME, __FILE__, __LINE__, true) { \
-      TestRunner::Runner::get().registerTest(this);  \
+      TestRunner::Runner::add(this);                 \
     }                                                \
     void run_internal() const override;              \
   };                                                 \
@@ -123,7 +125,7 @@ class Runner {
 #define TEST_MUST_FAIL(NAME)                          \
   struct NAME : TestRunner::Test {                    \
     NAME() : Test(#NAME, __FILE__, __LINE__, false) { \
-      TestRunner::Runner::get().registerTest(this);   \
+      TestRunner::Runner::add(this);                  \
     }                                                 \
     void run_internal() const override;               \
   };                                                  \
@@ -131,28 +133,28 @@ class Runner {
   void NAME::run_internal() const
 
 #define ASSERT_TRUE(t)                             \
-  do {                                             \
+  {                                                \
     if (!(t)) throw("ASSERT_TRUE(" #t ") failed"); \
-  } while (0)
+  }
 
 #define ASSERT_FALSE(t)                          \
-  do {                                           \
+  {                                              \
     if (t) throw("ASSERT_FALSE(" #t ") failed"); \
-  } while (0)
+  }
 
 #define EXPECT_EQ(a, b)                                                        \
-  do {                                                                         \
+  {                                                                            \
     if (!((a) == (b))) throw("EXPECT_EQ expected " #a " to equal " #b " ..."); \
-  } while (0)
+  }
 
 #define EXPECT_NE(a, b)                                               \
-  do {                                                                \
+  {                                                                   \
     if (((a) == (b)))                                                 \
       throw("EXPECT_NE expected " #a " to be unequal to " #b " ..."); \
-  } while (0)
+  }
 
 #define EXPECT_THROW(st)                                          \
-  do {                                                            \
+  {                                                               \
     bool did_throw = false;                                       \
     try {                                                         \
       st;                                                         \
@@ -160,12 +162,10 @@ class Runner {
       did_throw = true;                                           \
     }                                                             \
     if (!did_throw) throw "EXPECT_THROW statement did not throw"; \
-  } while (0)
+  }
 
 #define FAIL(message) \
-  do {                \
-    throw(message);   \
-  } while (0)
+  { throw(message); }
 
 }  // namespace TestRunner
 
