@@ -13,9 +13,6 @@
 // See LICENSE for a copy of the GNU General Public License or see
 // it online at <http://www.gnu.org/licenses/>.
 
-#ifndef TESTRUNNER_SELFTEST_H
-#define TESTRUNNER_SELFTEST_H
-
 #include "testrunner_core.h"
 
 TEST(AssertTrue) { ASSERT_TRUE(true); }
@@ -34,5 +31,3 @@ TEST(ExpectThrow) { EXPECT_THROW(throw true); }
 TEST_MUST_FAIL(ExpectThrowFail) { EXPECT_THROW(); }
 
 TEST_MUST_FAIL(ForcedFail) { FAIL("Forced fail"); }
-
-#endif  // TESTRUNNER_SELFTEST_H
