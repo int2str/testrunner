@@ -6,5 +6,17 @@ Don't use this framework in your project. There are much better frameworks avail
 This framework was created mainly for research purposes to see how it could be done. It was also created to test AVR code with minimal external dependencies.
 
 # How to use
-Run "ninja" to create a local test binary to run a self test.
-Otherwise, build the code as a library and create your own unit tests by including "testrunner_core.h" in your unit test files and include "testrunner_main.h" in one compilation unit to an executable test binary. Optionally include "testrunner_selftest.h" to ensure testrunner isn't broken.
+Run `bazel test //:*` to create a local test binary to run a self test.
+Otherwise, build the code as a library and create your own unit tests by including "testrunner/testrunner.h" in your unit test files and include "@testrunner//:main" as a dependency for your test binary.
+
+# Simplest possible test
+
+your_first_test.cc:
+
+    #include <testrunner/testrunner.h>
+
+    TEST(ThisTestNeverFails) {
+      ASSERT_TRUE(true);
+    }
+
+That's it :)
