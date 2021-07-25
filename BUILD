@@ -8,42 +8,45 @@ WARNING_COPTS = [
     "-Wshadow",
     "-Wold-style-cast",
     "-Wcast-align",
-    "-Wnon-virtual-dtor"
+    "-Wnon-virtual-dtor",
 ]
 
 COPTS = WARNING_COPTS + [
-    "-std=c++17"
+    "-std=c++17",
 ]
 
 package(
     default_visibility = ["//visibility:public"],
 )
 
+filegroup(
+    name = "public_headers",
+    srcs = ["include/testrunner/testrunner.h"],
+)
+
 cc_library(
     name = "lib",
-    hdrs = [
-        "testrunner_core.h",
-        "testrunner.h"
-    ]
+    hdrs = ["//:public_headers"],
+    strip_include_prefix = "/include",
 )
 
 cc_library(
     name = "main",
+    srcs = ["testrunner_main.cc"],
+    hdrs = ["//:public_headers"],
     copts = COPTS,
     linkstatic = 1,
-    srcs = [
-        "testrunner_main.cc",
-        "testrunner_core.h"
-    ]
+    strip_include_prefix = "/include",
 )
 
 cc_test(
     name = "selftest",
     size = "small",
-    copts = COPTS,
+    testonly = 1,
     srcs = [
         "testrunner_selftest.cc",
-        "testrunner_core.h"
+        "//:public_headers",
     ],
-    deps = [ "//:main" ]
+    copts = COPTS,
+    deps = ["//:main"],
 )

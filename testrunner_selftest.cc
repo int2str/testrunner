@@ -13,7 +13,7 @@
 // See LICENSE for a copy of the GNU General Public License or see
 // it online at <http://www.gnu.org/licenses/>.
 
-#include "testrunner_core.h"
+#include "testrunner/testrunner.h"
 
 TEST(AssertTrue) { ASSERT_TRUE(true); }
 TEST_MUST_FAIL(AssertTrueFail) { ASSERT_TRUE(false); }

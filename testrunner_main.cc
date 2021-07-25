@@ -16,7 +16,7 @@
 #ifndef TESTRUNNER_MAIN_H
 #define TESTRUNNER_MAIN_H
 
-#include "testrunner_core.h"
+#include "testrunner/testrunner.h"
 
 int main() { return (TestRunner::Runner::run() == 0 ? 0 : 1); }
 
