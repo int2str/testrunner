@@ -20,6 +20,14 @@ package(
 )
 
 cc_library(
+    name = "lib",
+    hdrs = [
+        "testrunner_core.h",
+        "testrunner.h"
+    ]
+)
+
+cc_library(
     name = "main",
     copts = COPTS,
     linkstatic = 1,
