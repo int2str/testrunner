@@ -15,9 +15,14 @@ COPTS = WARNING_COPTS + [
     "-std=c++17"
 ]
 
+package(
+    default_visibility = ["//visibility:public"],
+)
+
 cc_library(
     name = "main",
     copts = COPTS,
+    linkstatic = 1,
     srcs = [
         "testrunner_main.cc",
         "testrunner_core.h"
