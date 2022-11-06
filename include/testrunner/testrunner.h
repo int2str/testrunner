@@ -164,6 +164,15 @@ class Runner {
     if (!did_throw) throw "EXPECT_THROW statement did not throw"; \
   }
 
+#define EXPECT_FLOAT_IS_APPROX(a, b)                               \
+  {                                                                \
+    const float EPSILON = 0.0001;                                  \
+    float delta = ((a) - (b));                                     \
+    if (delta < 0) delta *= -1;                                    \
+    if (delta > EPSILON)                                           \
+      throw("EXPECT_FLOAT_IS_APPROX " #a " -> " #b " failed ..."); \
+  }
+
 #define FAIL(message) \
   { throw(message); }
 
