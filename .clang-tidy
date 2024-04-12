@@ -5,23 +5,16 @@ Checks: >
   bugprone-*,
 
   clang-diagnostic-*,
-  -clang-diagnostic-unused-command-line-argument,
 
   google-*,
-  -google-runtime-references,
 
   misc-*,
-  -misc-non-private-member-variables-in-classes,
-  -misc-definitions-in-headers,
 
   modernize-*,
-  -modernize-use-trailing-return-type,
 
   performance-*,
 
   readability-*,
-  -readability-qualified-auto,
-  -readability-braces-around-statements,
 
 WarningsAsErrors: false
 AnalyzeTemporaryDtors: false

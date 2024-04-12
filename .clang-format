@@ -1,2 +1,5 @@
 BasedOnStyle: Google
 MaxEmptyLinesToKeep: 1
+AlignConsecutiveAssignments: true
+DerivePointerAlignment: false
+IndentRequires: true

@@ -13,11 +13,5 @@
 // See LICENSE for a copy of the GNU General Public License or see
 // it online at <http://www.gnu.org/licenses/>.
 
-#ifndef TESTRUNNER_MAIN_H
-#define TESTRUNNER_MAIN_H
-
 #include "testrunner/testrunner.h"
-
-int main() { return (TestRunner::Runner::run() == 0 ? 0 : 1); }
-
-#endif  // TESTRUNNER_MAIN_H
+auto main() -> int { return (TestRunner::detail::Runner::run() == 0 ? 0 : 1); }

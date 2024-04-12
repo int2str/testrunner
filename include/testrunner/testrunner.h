@@ -20,81 +20,81 @@
 #include <string_view>
 #include <vector>
 
-namespace {
-constexpr const char *GREEN = "\033[32m";
-constexpr const char *RED = "\033[31m";
-constexpr const char *NOCOL = "\033[0m";
-}  // namespace
+namespace TestRunner::detail {
 
-namespace TestRunner {
+using namespace std::literals;
+constexpr auto GREEN = "\033[32m"sv;
+constexpr auto RED   = "\033[31m"sv;
+constexpr auto NOCOL = "\033[0m"sv;
 
 class Test {
  public:
-  Test(std::string_view name, std::string_view file, size_t line,
-       bool expected_to_pass)
-      : name_(name),
-        file_(file),
-        line_(line),
-        expected_to_pass_(expected_to_pass) {}
+  struct Location {
+    std::string_view file;
+    size_t line;
+  };
+
+  Test(std::string_view name, Location location, bool expected_to_pass)
+      : name_(name), location_(location), expected_to_pass_(expected_to_pass) {}
   virtual ~Test() = default;
 
-  void run() const {
+  [[nodiscard]] auto run() const -> bool {
     std::cout << name_ << " ... ";
-
     if (expected_to_pass_) {
       try {
         run_internal();
-        std::cout << GREEN << "PASS" << NOCOL << "\n";
-      } catch (const char *err) {
-        std::cout << RED << "FAIL" << NOCOL << "\n";
-        std::cerr << file_ << ":" << line_ << " " << err << "\n";
-        throw(err);
+        std::cout << detail::GREEN << "PASS" << detail::NOCOL << "\n";
+        return true;
+      } catch (const char* err) {
+        std::cout << detail::RED << "FAIL" << detail::NOCOL << "\n";
+        std::cerr << location_.file << ":" << location_.line << " " << err
+                  << "\n";
+        return false;
       }
 
     } else {
       try {
         run_internal();
-        std::cout << RED << "PASSED - It shouldn't have!" << NOCOL << "\n";
-        std::cerr << file_ << ":" << line_ << " test failed\n";
-      } catch (const char *) {
-        std::cout << GREEN << "PASS (failed as expeced)" << NOCOL << "\n";
-        return;
+        std::cout << detail::RED << "PASSED - It shouldn't have!"
+                  << detail::NOCOL << "\n";
+        std::cerr << location_.file << ":" << location_.line
+                  << " test failed\n";
+        return false;
+      } catch (const char*) {
+        std::cout << detail::GREEN << "PASS (failed as expeced)"
+                  << detail::NOCOL << "\n";
+        return true;
       }
-      throw("Test should have failed ...");
     }
   }
 
  protected:
   virtual void run_internal() const = 0;
 
+ private:
   const std::string_view name_;
-  const std::string_view file_;
-  const size_t line_;
+  const Location location_;
   const bool expected_to_pass_;
 };
 
 class Runner {
  public:
-  static void add(const Test *p_test) { get().tests_.push_back(p_test); }
-  static size_t run() { return get().runAllTests(); }
+  static void add(const Test* p_test) { get().tests_.push_back(p_test); }
+  static auto run() -> size_t { return get().runAllTests(); }
 
  private:
-  static Runner &get() {
-    static Runner testRunner;
-    return testRunner;
+  static auto get() -> Runner& {
+    static Runner test_runner;
+    return test_runner;
   }
 
-  size_t runAllTests() {
+  [[nodiscard]] auto runAllTests() const -> size_t {
     size_t passed = 0;
     std::cout << "Running " << tests_.size() << " test(s) ...\n";
     std::cout << "----------------------------------------\n";
 
-    try {
-      for (const auto test : tests_) {
-        test->run();
-        ++passed;
-      }
-    } catch (...) {
+    for (const auto* test : tests_) {
+      if (test->run()) ++passed;
     }
 
     std::cout << "----------------------------------------\n";
@@ -109,27 +109,35 @@ class Runner {
   }
 
   Runner() = default;
-  std::vector<const Test *> tests_;
+  std::vector<const Test*> tests_;
 };
 
-#define TEST(NAME)                                   \
-  struct NAME : TestRunner::Test {                   \
-    NAME() : Test(#NAME, __FILE__, __LINE__, true) { \
-      TestRunner::Runner::add(this);                 \
-    }                                                \
-    void run_internal() const override;              \
-  };                                                 \
-  static NAME _instance_of_##NAME;                   \
+}  // namespace TestRunner::detail
+
+namespace TestRunner {
+
+#define TEST(NAME)                                     \
+  struct NAME : TestRunner::detail::Test {             \
+    NAME() : Test(#NAME, {__FILE__, __LINE__}, true) { \
+      TestRunner::detail::Runner::add(this);           \
+    }                                                  \
+    void run_internal() const override;                \
+  };                                                   \
+  namespace {                                          \
+  NAME _instance_of_##NAME;                            \
+  }                                                    \
   void NAME::run_internal() const
 
-#define TEST_MUST_FAIL(NAME)                          \
-  struct NAME : TestRunner::Test {                    \
-    NAME() : Test(#NAME, __FILE__, __LINE__, false) { \
-      TestRunner::Runner::add(this);                  \
-    }                                                 \
-    void run_internal() const override;               \
-  };                                                  \
-  static NAME _instance_of_##NAME;                    \
+#define TEST_MUST_FAIL(NAME)                            \
+  struct NAME : TestRunner::detail::Test {              \
+    NAME() : Test(#NAME, {__FILE__, __LINE__}, false) { \
+      TestRunner::detail::Runner::add(this);            \
+    }                                                   \
+    void run_internal() const override;                 \
+  };                                                    \
+  namespace {                                           \
+  NAME _instance_of_##NAME;                             \
+  }                                                     \
   void NAME::run_internal() const
 
 #define ASSERT_TRUE(t)                             \
@@ -167,7 +175,7 @@ class Runner {
 #define EXPECT_FLOAT_IS_APPROX(a, b)                               \
   {                                                                \
     const float EPSILON = 0.0001;                                  \
-    float delta = ((a) - (b));                                     \
+    float delta         = ((a) - (b));                             \
     if (delta < 0) delta *= -1;                                    \
     if (delta > EPSILON)                                           \
       throw("EXPECT_FLOAT_IS_APPROX " #a " -> " #b " failed ..."); \

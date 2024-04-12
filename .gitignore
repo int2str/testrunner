@@ -1,1 +1,4 @@
 bazel-*
+build/
+.cache/
+compile_commands.json

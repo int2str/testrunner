@@ -1,0 +1,52 @@
+cxx = clang++
+ar = ar
+
+builddir = build
+b = $builddir
+
+cflags = -Os -g -std=c++20 -Wextra -Wconversion -Wall -pedantic -Werror $
+    -ffunction-sections -fdata-sections -fmerge-all-constants $
+    -gdwarf-4 $
+    -Iinclude
+ldflags = -Wl,--gc-sections -Wl,--relax -L$b -lfmt
+
+rule cxx
+    command = $cxx -MMD -MF $out.d $cflags -c $in -o $out
+    description = C++ $out
+    depfile = $out.d
+
+rule link
+    command = $cxx $cflags $ldflags -o $out $in $libs
+    description = LNK $out
+
+rule ar
+    command = $ar rcs $out $in
+    description = LIB $out
+
+rule run
+    command = $in
+    description = RUN $in
+
+rule size
+    command = size $in
+
+rule compdb
+    command = ninja -t compdb > $out
+    generator = true
+    description = COMPDB
+
+rule tidy
+    command = clang-tidy -p . --quiet --header-filter=.* src/*.cc
+    description = TIDY
+
+build $b/test: link $b/testrunner_main.o $
+  $b/testrunner_selftest.o
+build $b/testrunner_main.o: cxx src/testrunner_main.cc
+build $b/testrunner_selftest.o: cxx src/testrunner_selftest.cc
+
+build test: run $b/test
+default test
+
+build tidy: tidy | compile_commands.json
+
+build compile_commands.json: compdb
