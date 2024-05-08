@@ -181,6 +181,15 @@ namespace TestRunner {
       throw("EXPECT_FLOAT_IS_APPROX " #a " -> " #b " failed ..."); \
   }
 
+#define EXPECT_DOUBLE_IS_APPROX(a, b)                               \
+  {                                                                 \
+    const double EPSILON = 0.0001;                                  \
+    double delta         = ((a) - (b));                             \
+    if (delta < 0) delta *= -1;                                     \
+    if (delta > EPSILON)                                            \
+      throw("EXPECT_DOUBLE_IS_APPROX " #a " -> " #b " failed ..."); \
+  }
+
 #define FAIL(message) \
   { throw(message); }
 
