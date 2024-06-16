@@ -1,20 +1,11 @@
 ---
 Checks: >
-  -*,
-
-  bugprone-*,
-
-  clang-diagnostic-*,
-
-  google-*,
-
-  misc-*,
-
-  modernize-*,
-
-  performance-*,
-
-  readability-*,
+  *,
+  -altera-*,
+  -cert-*,
+  -fuchsia-*,
+  -hicpp-*,
+  -llvmlibc-*,
 
 WarningsAsErrors: false
 AnalyzeTemporaryDtors: false

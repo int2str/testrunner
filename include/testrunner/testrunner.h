@@ -27,6 +27,8 @@ constexpr auto GREEN = "\033[32m"sv;
 constexpr auto RED   = "\033[31m"sv;
 constexpr auto NOCOL = "\033[0m"sv;
 
+enum class Output { VERBOSE, COMPACT, QUIET };
+
 class Test {
  public:
   struct Location {
@@ -38,14 +40,16 @@ class Test {
       : name_(name), location_(location), expected_to_pass_(expected_to_pass) {}
   virtual ~Test() = default;
 
-  [[nodiscard]] auto run() const -> bool {
-    std::cout << name_ << " ... ";
+  [[nodiscard]] auto run(Output output) const -> bool {
+    if (output == Output::VERBOSE) std::cout << name_ << " ... ";
     if (expected_to_pass_) {
       try {
         run_internal();
-        std::cout << detail::GREEN << "PASS" << detail::NOCOL << "\n";
+        if (output == Output::VERBOSE)
+          std::cout << detail::GREEN << "PASS" << detail::NOCOL << "\n";
         return true;
       } catch (const char* err) {
+        if (output != Output::VERBOSE) std::cout << name_ << " ... ";
         std::cout << detail::RED << "FAIL" << detail::NOCOL << "\n";
         std::cerr << location_.file << ":" << location_.line << " " << err
                   << "\n";
@@ -55,18 +59,26 @@ class Test {
     } else {
       try {
         run_internal();
+        if (output != Output::VERBOSE) std::cout << name_ << " ... ";
         std::cout << detail::RED << "PASSED - It shouldn't have!"
                   << detail::NOCOL << "\n";
         std::cerr << location_.file << ":" << location_.line
                   << " test failed\n";
         return false;
       } catch (const char*) {
-        std::cout << detail::GREEN << "PASS (failed as expeced)"
-                  << detail::NOCOL << "\n";
+        if (output == Output::VERBOSE) {
+          std::cout << detail::GREEN << "PASS (failed as expeced)"
+                    << detail::NOCOL << "\n";
+        }
         return true;
       }
     }
   }
+
+  Test(const Test&)                     = delete;
+  Test(Test&&)                          = delete;
+  auto operator=(const Test&) -> Test&  = delete;
+  auto operator=(const Test&&) -> Test& = delete;
 
  protected:
   virtual void run_internal() const = 0;
@@ -80,7 +92,7 @@ class Test {
 class Runner {
  public:
   static void add(const Test* p_test) { get().tests_.push_back(p_test); }
-  static auto run() -> size_t { return get().runAllTests(); }
+  static auto run(Output output) -> size_t { return get().runAllTests(output); }
 
  private:
   static auto get() -> Runner& {
@@ -88,24 +100,41 @@ class Runner {
     return test_runner;
   }
 
-  [[nodiscard]] auto runAllTests() const -> size_t {
+  [[nodiscard]] auto runAllTests(Output output) const -> size_t {
     size_t passed = 0;
-    std::cout << "Running " << tests_.size() << " test(s) ...\n";
-    std::cout << "----------------------------------------\n";
+    size_t failed = 0;
+
+    if (output == Output::VERBOSE) {
+      std::cout << "Running " << tests_.size() << " test(s) ...\n";
+      std::cout << "----------------------------------------\n";
+    }
 
     for (const auto* test : tests_) {
-      if (test->run()) ++passed;
+      if (test->run(output)) {
+        ++passed;
+      } else {
+        ++failed;
+        break;
+      }
     }
 
-    std::cout << "----------------------------------------\n";
-    if (passed == tests_.size()) {
-      std::cout << "All done. " << passed << " test(s) passed.\n";
-    } else {
-      std::cout << passed << " test(s) passed, " << (tests_.size() - passed)
-                << " failed.\n";
+    size_t skipped = tests_.size() - passed - failed;
+
+    if (output == Output::VERBOSE)
+      std::cout << "----------------------------------------\n";
+
+    if (output != Output::QUIET) {
+      if (passed == tests_.size())
+        std::cout << "All done. " << passed << " test(s) passed.\n";
     }
 
-    return tests_.size() - passed;
+    if (failed != 0) {
+      std::cout << passed << " test(s) passed, " << failed << " failed";
+      if (skipped != 0) std::cout << " (" << skipped << " skipped)";
+      std::cout << "\n";
+    }
+
+    return failed;
   }
 
   Runner() = default;
@@ -116,6 +145,10 @@ class Runner {
 
 namespace TestRunner {
 
+// In the future, it would be nice to figure out a way to do this wihout macros.
+// That future isn't now ...
+// NOLINTBEGIN(cppcoreguidelines-macro-usage)
+
 #define TEST(NAME)                                     \
   struct NAME : TestRunner::detail::Test {             \
     NAME() : Test(#NAME, {__FILE__, __LINE__}, true) { \
@@ -124,7 +157,7 @@ namespace TestRunner {
     void run_internal() const override;                \
   };                                                   \
   namespace {                                          \
-  NAME _instance_of_##NAME;                            \
+  const NAME _instance_of_##NAME;                      \
   }                                                    \
   void NAME::run_internal() const
 
@@ -136,7 +169,7 @@ namespace TestRunner {
     void run_internal() const override;                 \
   };                                                    \
   namespace {                                           \
-  NAME _instance_of_##NAME;                             \
+  const NAME _instance_of_##NAME;                       \
   }                                                     \
   void NAME::run_internal() const
 
@@ -192,6 +225,8 @@ namespace TestRunner {
 
 #define FAIL(message) \
   { throw(message); }
+
+// NOLINTEND(cppcoreguidelines-macro-usage)
 
 }  // namespace TestRunner
 
