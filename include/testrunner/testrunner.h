@@ -139,8 +139,10 @@ class Runner {
     }
 
     size_t skipped = tests_.size() - passed - failed;
-    if (!parameters.test_name.empty() and skipped == tests_.size())
+    if (!parameters.test_name.empty() and skipped == tests_.size()) {
       std::cerr << "No test matching '" << parameters.test_name << "' found.\n";
+      return 1;
+    }
 
     if (parameters.output_mode == OutputMode::VERBOSE)
       std::cout << "----------------------------------------\n";
