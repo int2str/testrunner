@@ -20,14 +20,23 @@
 #include <string_view>
 #include <vector>
 
+namespace TestRunner {
+
+enum class OutputMode { VERBOSE, COMPACT, QUIET };
+
+struct Parameters {
+  std::string_view test_name{};
+  OutputMode output_mode;
+};
+
+};  // namespace TestRunner
+
 namespace TestRunner::detail {
 
 using namespace std::literals;
 constexpr auto GREEN = "\033[32m"sv;
 constexpr auto RED   = "\033[31m"sv;
 constexpr auto NOCOL = "\033[0m"sv;
-
-enum class Output { VERBOSE, COMPACT, QUIET };
 
 class Test {
  public:
@@ -40,16 +49,16 @@ class Test {
       : name_(name), location_(location), expected_to_pass_(expected_to_pass) {}
   virtual ~Test() = default;
 
-  [[nodiscard]] auto run(Output output) const -> bool {
-    if (output == Output::VERBOSE) std::cout << name_ << " ... ";
+  [[nodiscard]] auto run(OutputMode output) const -> bool {
+    if (output == OutputMode::VERBOSE) std::cout << name_ << " ... ";
     if (expected_to_pass_) {
       try {
         run_internal();
-        if (output == Output::VERBOSE)
+        if (output == OutputMode::VERBOSE)
           std::cout << detail::GREEN << "PASS" << detail::NOCOL << "\n";
         return true;
       } catch (const char* err) {
-        if (output != Output::VERBOSE) std::cout << name_ << " ... ";
+        if (output != OutputMode::VERBOSE) std::cout << name_ << " ... ";
         std::cout << detail::RED << "FAIL" << detail::NOCOL << "\n";
         std::cerr << location_.file << ":" << location_.line << " " << err
                   << "\n";
@@ -59,14 +68,14 @@ class Test {
     } else {
       try {
         run_internal();
-        if (output != Output::VERBOSE) std::cout << name_ << " ... ";
+        if (output != OutputMode::VERBOSE) std::cout << name_ << " ... ";
         std::cout << detail::RED << "PASSED - It shouldn't have!"
                   << detail::NOCOL << "\n";
         std::cerr << location_.file << ":" << location_.line
                   << " test failed\n";
         return false;
       } catch (const char*) {
-        if (output == Output::VERBOSE) {
+        if (output == OutputMode::VERBOSE) {
           std::cout << detail::GREEN << "PASS (failed as expeced)"
                     << detail::NOCOL << "\n";
         }
@@ -74,6 +83,8 @@ class Test {
       }
     }
   }
+
+  [[nodiscard]] auto name() const -> std::string_view { return name_; }
 
   Test(const Test&)                     = delete;
   Test(Test&&)                          = delete;
@@ -92,7 +103,10 @@ class Test {
 class Runner {
  public:
   static void add(const Test* p_test) { get().tests_.push_back(p_test); }
-  static auto run(Output output) -> size_t { return get().runAllTests(output); }
+  static auto run(const Parameters& parameters) -> size_t {
+    if (!parameters.test_name.empty()) return get().runOneTest(parameters);
+    return get().runAllTests(parameters.output_mode);
+  }
 
  private:
   static auto get() -> Runner& {
@@ -100,11 +114,27 @@ class Runner {
     return test_runner;
   }
 
-  [[nodiscard]] auto runAllTests(Output output) const -> size_t {
+  [[nodiscard]] auto runOneTest(const Parameters& parameters) const -> size_t {
+    auto found  = false;
+    auto passed = false;
+    for (const auto* test : tests_) {
+      if (test->name() == parameters.test_name) {
+        found  = true;
+        passed = test->run(parameters.output_mode);
+      }
+    }
+    if (!found) {
+      std::cerr << detail::RED << "ERROR: " << detail::NOCOL << " Test name '"
+                << parameters.test_name << "' not found.\n";
+    }
+    return passed ? 0 : 1;  // Number of tests failed...
+  }
+
+  [[nodiscard]] auto runAllTests(OutputMode output) const -> size_t {
     size_t passed = 0;
     size_t failed = 0;
 
-    if (output == Output::VERBOSE) {
+    if (output == OutputMode::VERBOSE) {
       std::cout << "Running " << tests_.size() << " test(s) ...\n";
       std::cout << "----------------------------------------\n";
     }
@@ -120,10 +150,10 @@ class Runner {
 
     size_t skipped = tests_.size() - passed - failed;
 
-    if (output == Output::VERBOSE)
+    if (output == OutputMode::VERBOSE)
       std::cout << "----------------------------------------\n";
 
-    if (output != Output::QUIET) {
+    if (output != OutputMode::QUIET) {
       if (passed == tests_.size())
         std::cout << "All done. " << passed << " test(s) passed.\n";
     }
