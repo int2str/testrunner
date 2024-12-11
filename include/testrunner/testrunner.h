@@ -104,8 +104,7 @@ class Runner {
  public:
   static void add(const Test* p_test) { get().tests_.push_back(p_test); }
   static auto run(const Parameters& parameters) -> size_t {
-    if (!parameters.test_name.empty()) return get().runOneTest(parameters);
-    return get().runAllTests(parameters.output_mode);
+    return get().runTests(parameters);
   }
 
  private:
@@ -114,51 +113,45 @@ class Runner {
     return test_runner;
   }
 
-  [[nodiscard]] auto runOneTest(const Parameters& parameters) const -> size_t {
-    auto found  = false;
-    auto passed = false;
-    for (const auto* test : tests_) {
-      if (test->name() == parameters.test_name) {
-        found  = true;
-        passed = test->run(parameters.output_mode);
-      }
-    }
-    if (!found) {
-      std::cerr << detail::RED << "ERROR: " << detail::NOCOL << " Test name '"
-                << parameters.test_name << "' not found.\n";
-    }
-    return passed ? 0 : 1;  // Number of tests failed...
-  }
-
-  [[nodiscard]] auto runAllTests(OutputMode output) const -> size_t {
+  [[nodiscard]] auto runTests(const Parameters& parameters) const -> size_t {
     size_t passed = 0;
     size_t failed = 0;
 
-    if (output == OutputMode::VERBOSE) {
-      std::cout << "Running " << tests_.size() << " test(s) ...\n";
+    if (parameters.output_mode == OutputMode::VERBOSE) {
+      if (parameters.test_name.empty())
+        std::cout << "Running " << tests_.size() << " test(s) ...\n";
+      else
+        std::cout << "Running tests matching '" << parameters.test_name
+                  << "' ...\n";
       std::cout << "----------------------------------------\n";
     }
 
     for (const auto* test : tests_) {
-      if (test->run(output)) {
-        ++passed;
-      } else {
-        ++failed;
-        break;
+      if (parameters.test_name.empty() or
+          test->name().starts_with(parameters.test_name)) {
+        if (test->run(parameters.output_mode)) {
+          ++passed;
+        } else {
+          ++failed;
+          break;
+        }
       }
     }
 
     size_t skipped = tests_.size() - passed - failed;
+    if (!parameters.test_name.empty() and skipped == tests_.size())
+      std::cerr << "No test matching '" << parameters.test_name << "' found.\n";
 
-    if (output == OutputMode::VERBOSE)
+    if (parameters.output_mode == OutputMode::VERBOSE)
       std::cout << "----------------------------------------\n";
 
-    if (output != OutputMode::QUIET) {
+    if (parameters.output_mode != OutputMode::QUIET) {
       if (passed == tests_.size())
         std::cout << "All done. " << passed << " test(s) passed.\n";
     }
 
-    if (failed != 0) {
+    if (failed != 0 or
+        (skipped != 0 and parameters.output_mode != OutputMode::QUIET)) {
       std::cout << passed << " test(s) passed, " << failed << " failed";
       if (skipped != 0) std::cout << " (" << skipped << " skipped)";
       std::cout << "\n";
