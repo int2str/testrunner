@@ -24,9 +24,12 @@ namespace TestRunner {
 
 enum class OutputMode { VERBOSE, COMPACT, QUIET };
 
+enum class OnError { FAIL, CONTINUE };
+
 struct Parameters {
+  OutputMode output_mode{OutputMode::COMPACT};
+  OnError on_error{OnError::FAIL};
   std::string_view test_name{};
-  OutputMode output_mode;
 };
 
 };  // namespace TestRunner
@@ -133,7 +136,7 @@ class Runner {
           ++passed;
         } else {
           ++failed;
-          break;
+          if (parameters.on_error == OnError::FAIL) break;
         }
       }
     }
