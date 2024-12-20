@@ -45,8 +45,8 @@ Test::Test(std::string_view name, Location location, bool expected_to_pass)
     try {
       run_internal();
       if (output == OutputMode::TIMING) {
-        const auto test_took = std::chrono::duration<double, std::milli>(
-            clock::now() - test_started_at);
+        const auto test_took =
+            std::chrono::duration<double>(clock::now() - test_started_at);
         std::cout << std::format("{:7.4F}s | ", test_took.count());
       }
       if (output >= OutputMode::VERBOSE)
@@ -70,8 +70,8 @@ Test::Test(std::string_view name, Location location, bool expected_to_pass)
       return false;
     } catch (const char*) {
       if (output == OutputMode::TIMING) {
-        const auto test_took = std::chrono::duration<double, std::milli>(
-            clock::now() - test_started_at);
+        const auto test_took =
+            std::chrono::duration<double>(clock::now() - test_started_at);
         std::cout << std::format("{:7.4F}s | ", test_took.count());
       }
       if (output >= OutputMode::VERBOSE) {
@@ -153,8 +153,8 @@ auto Runner::get() -> Runner& {
   }
 
   if (parameters.output_mode == OutputMode::TIMING) {
-    const auto test_took = std::chrono::duration<double, std::milli>(
-        tests_finished_at - tests_started_at);
+    const auto test_took =
+        std::chrono::duration<double>(tests_finished_at - tests_started_at);
     std::cout << std::format("Tests completed in {:0.4F}s.\n",
                              test_took.count());
   }
