@@ -16,15 +16,15 @@
 #ifndef TESTRUNNER_CORE_H
 #define TESTRUNNER_CORE_H
 
-#include <iostream>
+#include <cstdint>
 #include <string_view>
 #include <vector>
 
 namespace TestRunner {
 
-enum class OutputMode { VERBOSE, COMPACT, QUIET };
+enum class OutputMode : uint8_t { QUIET = 0, COMPACT, VERBOSE, TIMING };
 
-enum class OnError { FAIL, CONTINUE };
+enum class OnError : uint8_t { FAIL, CONTINUE };
 
 struct Parameters {
   OutputMode output_mode{OutputMode::COMPACT};
@@ -36,11 +36,6 @@ struct Parameters {
 
 namespace TestRunner::detail {
 
-using namespace std::literals;
-constexpr auto GREEN = "\033[32m"sv;
-constexpr auto RED   = "\033[31m"sv;
-constexpr auto NOCOL = "\033[0m"sv;
-
 class Test {
  public:
   struct Location {
@@ -48,51 +43,18 @@ class Test {
     size_t line;
   };
 
-  Test(std::string_view name, Location location, bool expected_to_pass)
-      : name_(name), location_(location), expected_to_pass_(expected_to_pass) {}
+  Test(std::string_view name, Location location, bool expected_to_pass);
   virtual ~Test() = default;
-
-  [[nodiscard]] auto run(OutputMode output) const -> bool {
-    if (output == OutputMode::VERBOSE) std::cout << name_ << " ... ";
-    if (expected_to_pass_) {
-      try {
-        run_internal();
-        if (output == OutputMode::VERBOSE)
-          std::cout << detail::GREEN << "PASS" << detail::NOCOL << "\n";
-        return true;
-      } catch (const char* err) {
-        if (output != OutputMode::VERBOSE) std::cout << name_ << " ... ";
-        std::cout << detail::RED << "FAIL" << detail::NOCOL << "\n";
-        std::cerr << location_.file << ":" << location_.line << " " << err
-                  << "\n";
-        return false;
-      }
-
-    } else {
-      try {
-        run_internal();
-        if (output != OutputMode::VERBOSE) std::cout << name_ << " ... ";
-        std::cout << detail::RED << "PASSED - It shouldn't have!"
-                  << detail::NOCOL << "\n";
-        std::cerr << location_.file << ":" << location_.line
-                  << " test failed\n";
-        return false;
-      } catch (const char*) {
-        if (output == OutputMode::VERBOSE) {
-          std::cout << detail::GREEN << "PASS (failed as expeced)"
-                    << detail::NOCOL << "\n";
-        }
-        return true;
-      }
-    }
-  }
-
-  [[nodiscard]] auto name() const -> std::string_view { return name_; }
 
   Test(const Test&)                     = delete;
   Test(Test&&)                          = delete;
   auto operator=(const Test&) -> Test&  = delete;
   auto operator=(const Test&&) -> Test& = delete;
+
+  [[nodiscard]] auto run(OutputMode output,
+                         size_t max_name_length) const -> bool;
+
+  [[nodiscard]] auto name() const -> std::string_view;
 
  protected:
   virtual void run_internal() const = 0;
@@ -105,66 +67,13 @@ class Test {
 
 class Runner {
  public:
-  static void add(const Test* p_test) { get().tests_.push_back(p_test); }
-  static auto run(const Parameters& parameters) -> size_t {
-    return get().runTests(parameters);
-  }
+  static void add(const Test* p_test);
+  static auto run(const Parameters& parameters) -> size_t;
+  static auto get() -> Runner&;
+
+  [[nodiscard]] auto runTests(const Parameters& parameters) const -> size_t;
 
  private:
-  static auto get() -> Runner& {
-    static Runner test_runner;
-    return test_runner;
-  }
-
-  [[nodiscard]] auto runTests(const Parameters& parameters) const -> size_t {
-    size_t passed = 0;
-    size_t failed = 0;
-
-    if (parameters.output_mode == OutputMode::VERBOSE) {
-      if (parameters.test_name.empty())
-        std::cout << "Running " << tests_.size() << " test(s) ...\n";
-      else
-        std::cout << "Running tests matching '" << parameters.test_name
-                  << "' ...\n";
-      std::cout << "----------------------------------------\n";
-    }
-
-    for (const auto* test : tests_) {
-      if (parameters.test_name.empty() or
-          test->name().starts_with(parameters.test_name)) {
-        if (test->run(parameters.output_mode)) {
-          ++passed;
-        } else {
-          ++failed;
-          if (parameters.on_error == OnError::FAIL) break;
-        }
-      }
-    }
-
-    size_t skipped = tests_.size() - passed - failed;
-    if (!parameters.test_name.empty() and skipped == tests_.size()) {
-      std::cerr << "No test matching '" << parameters.test_name << "' found.\n";
-      return 1;
-    }
-
-    if (parameters.output_mode == OutputMode::VERBOSE)
-      std::cout << "----------------------------------------\n";
-
-    if (parameters.output_mode != OutputMode::QUIET) {
-      if (passed == tests_.size())
-        std::cout << "All done. " << passed << " test(s) passed.\n";
-    }
-
-    if (failed != 0 or
-        (skipped != 0 and parameters.output_mode != OutputMode::QUIET)) {
-      std::cout << passed << " test(s) passed, " << failed << " failed";
-      if (skipped != 0) std::cout << " (" << skipped << " skipped)";
-      std::cout << "\n";
-    }
-
-    return failed;
-  }
-
   Runner() = default;
   std::vector<const Test*> tests_;
 };

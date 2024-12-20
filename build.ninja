@@ -24,7 +24,7 @@ rule ar
     description = LIB $out
 
 rule run
-    command = $in
+    command = $in -v
     description = RUN $in
 
 rule size
