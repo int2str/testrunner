@@ -1,4 +1,9 @@
 bazel-*
 build/
+test_package/build/
+test_package/CMakeUserPresets.json
 .cache/
+__pycache__/
+*.py[cod]
 compile_commands.json
+CMakeUserPresets.json

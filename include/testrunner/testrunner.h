@@ -16,7 +16,9 @@
 #ifndef TESTRUNNER_CORE_H
 #define TESTRUNNER_CORE_H
 
+#include <concepts>
 #include <cstdint>
+#include <source_location>
 #include <string_view>
 #include <vector>
 
@@ -38,12 +40,8 @@ namespace TestRunner::detail {
 
 class Test {
  public:
-  struct Location {
-    std::string_view file;
-    size_t line;
-  };
-
-  Test(std::string_view name, Location location, bool expected_to_pass);
+  Test(std::string_view name, std::source_location location,
+       bool expected_to_pass);
   virtual ~Test() = default;
 
   Test(const Test&)                     = delete;
@@ -51,8 +49,8 @@ class Test {
   auto operator=(const Test&) -> Test&  = delete;
   auto operator=(const Test&&) -> Test& = delete;
 
-  [[nodiscard]] auto run(OutputMode output,
-                         size_t max_name_length) const -> bool;
+  [[nodiscard]] auto run(OutputMode output, size_t max_name_length) const
+      -> bool;
 
   [[nodiscard]] auto name() const -> std::string_view;
 
@@ -61,7 +59,7 @@ class Test {
 
  private:
   const std::string_view name_;
-  const Location location_;
+  const std::source_location location_;
   const bool expected_to_pass_;
 };
 
@@ -82,55 +80,108 @@ class Runner {
 
 namespace TestRunner {
 
-// In the future, it would be nice to figure out a way to do this wihout macros.
-// That future isn't now ...
+// ---------------------------------------------------------------------------
+// Assertion functions (formerly macros)
+// ---------------------------------------------------------------------------
+
+inline void assert_true(
+    bool condition, std::string_view message = {},
+    std::source_location loc = std::source_location::current()) {
+  if (!condition) {
+    if (message.empty())
+      throw std::source_location{loc};
+    else
+      throw message.data();
+  }
+}
+
+inline void assert_false(
+    bool condition, std::string_view message = {},
+    std::source_location loc = std::source_location::current()) {
+  if (condition) {
+    if (message.empty())
+      throw std::source_location{loc};
+    else
+      throw message.data();
+  }
+}
+
+template <typename A, typename B>
+  requires std::equality_comparable_with<A, B>
+inline void expect_eq(
+    A&& a, B&& b, std::string_view message = {},
+    std::source_location loc = std::source_location::current()) {
+  if (!(a == b)) {
+    if (message.empty())
+      throw std::source_location{loc};
+    else
+      throw message.data();
+  }
+}
+
+template <typename A, typename B>
+  requires std::equality_comparable_with<A, B>
+inline void expect_ne(
+    A&& a, B&& b, std::string_view message = {},
+    std::source_location loc = std::source_location::current()) {
+  if (a == b) {
+    if (message.empty())
+      throw std::source_location{loc};
+    else
+      throw message.data();
+  }
+}
+
+template <std::floating_point T>
+inline void expect_approx_eq(
+    T a, T b, T epsilon = static_cast<T>(0.0001), std::string_view message = {},
+    std::source_location loc = std::source_location::current()) {
+  const T delta = (a > b) ? (a - b) : (b - a);
+  if (delta > epsilon) {
+    if (message.empty())
+      throw std::source_location{loc};
+    else
+      throw message.data();
+  }
+}
+
+[[noreturn]] inline void fail(const char* message) { throw message; }
+
+// ---------------------------------------------------------------------------
+// TEST / TEST_MUST_FAIL — these two must remain macros because they inject a
+// struct definition and a static instance into the translation unit, which
+// cannot be done with templates or functions.
+// ---------------------------------------------------------------------------
 // NOLINTBEGIN(cppcoreguidelines-macro-usage)
 
-#define TEST(NAME)                                     \
-  struct NAME : TestRunner::detail::Test {             \
-    NAME() : Test(#NAME, {__FILE__, __LINE__}, true) { \
-      TestRunner::detail::Runner::add(this);           \
-    }                                                  \
-    void run_internal() const override;                \
-  };                                                   \
-  namespace {                                          \
-  const NAME _instance_of_##NAME;                      \
-  }                                                    \
+#define TEST(NAME)                                                \
+  struct NAME : TestRunner::detail::Test {                        \
+    NAME() : Test(#NAME, std::source_location::current(), true) { \
+      TestRunner::detail::Runner::add(this);                      \
+    }                                                             \
+    void run_internal() const override;                           \
+  };                                                              \
+  namespace {                                                     \
+  const NAME _instance_of_##NAME;                                 \
+  }                                                               \
   void NAME::run_internal() const
 
-#define TEST_MUST_FAIL(NAME)                            \
-  struct NAME : TestRunner::detail::Test {              \
-    NAME() : Test(#NAME, {__FILE__, __LINE__}, false) { \
-      TestRunner::detail::Runner::add(this);            \
-    }                                                   \
-    void run_internal() const override;                 \
-  };                                                    \
-  namespace {                                           \
-  const NAME _instance_of_##NAME;                       \
-  }                                                     \
+#define TEST_MUST_FAIL(NAME)                                       \
+  struct NAME : TestRunner::detail::Test {                         \
+    NAME() : Test(#NAME, std::source_location::current(), false) { \
+      TestRunner::detail::Runner::add(this);                       \
+    }                                                              \
+    void run_internal() const override;                            \
+  };                                                               \
+  namespace {                                                      \
+  const NAME _instance_of_##NAME;                                  \
+  }                                                                \
   void NAME::run_internal() const
 
-#define ASSERT_TRUE(t)                             \
-  {                                                \
-    if (!(t)) throw("ASSERT_TRUE(" #t ") failed"); \
-  }
-
-#define ASSERT_FALSE(t)                          \
-  {                                              \
-    if (t) throw("ASSERT_FALSE(" #t ") failed"); \
-  }
-
-#define EXPECT_EQ(a, b)                                                        \
-  {                                                                            \
-    if (!((a) == (b))) throw("EXPECT_EQ expected " #a " to equal " #b " ..."); \
-  }
-
-#define EXPECT_NE(a, b)                                               \
-  {                                                                   \
-    if (((a) == (b)))                                                 \
-      throw("EXPECT_NE expected " #a " to be unequal to " #b " ..."); \
-  }
-
+// EXPECT_THROW must stay a macro: the statement `st` must be wrapped in a
+// try/catch at the call site — it cannot be passed to a function without a
+// lambda, which would silently change semantics for statements that capture
+// local variables or use break/continue/return.
 #define EXPECT_THROW(st)                                          \
   {                                                               \
     bool did_throw = false;                                       \
@@ -141,27 +192,6 @@ namespace TestRunner {
     }                                                             \
     if (!did_throw) throw "EXPECT_THROW statement did not throw"; \
   }
-
-#define EXPECT_FLOAT_IS_APPROX(a, b)                               \
-  {                                                                \
-    const float EPSILON = 0.0001;                                  \
-    float delta         = ((a) - (b));                             \
-    if (delta < 0) delta *= -1;                                    \
-    if (delta > EPSILON)                                           \
-      throw("EXPECT_FLOAT_IS_APPROX " #a " -> " #b " failed ..."); \
-  }
-
-#define EXPECT_DOUBLE_IS_APPROX(a, b)                               \
-  {                                                                 \
-    const double EPSILON = 0.0001;                                  \
-    double delta         = ((a) - (b));                             \
-    if (delta < 0) delta *= -1;                                     \
-    if (delta > EPSILON)                                            \
-      throw("EXPECT_DOUBLE_IS_APPROX " #a " -> " #b " failed ..."); \
-  }
-
-#define FAIL(message) \
-  { throw(message); }
 
 // NOLINTEND(cppcoreguidelines-macro-usage)
 

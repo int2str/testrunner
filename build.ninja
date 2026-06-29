@@ -4,7 +4,7 @@ ar = ar
 builddir = build
 b = $builddir
 
-cflags = -Os -g -std=c++20 -Wextra -Wconversion -Wall -pedantic -Werror $
+cflags = -Os -g -std=c++23 -Wextra -Wconversion -Wall -pedantic -Werror $
     -ffunction-sections -fdata-sections -fmerge-all-constants $
     -gdwarf-4 $
     -Iinclude
@@ -39,8 +39,9 @@ rule tidy
     command = clang-tidy -p . --quiet --header-filter=.* src/*.cc
     description = TIDY
 
-build $b/test: link $b/testrunner_main.o $
+build $b/test: link $b/testrunner.o $b/testrunner_main.o $
   $b/testrunner_selftest.o
+build $b/testrunner.o: cxx src/testrunner.cc
 build $b/testrunner_main.o: cxx src/testrunner_main.cc
 build $b/testrunner_selftest.o: cxx src/testrunner_selftest.cc
 

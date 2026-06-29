@@ -12,7 +12,7 @@ WARNING_COPTS = [
 ]
 
 COPTS = WARNING_COPTS + [
-    "-std=c++17",
+    "-std=c++23",
 ]
 
 package(
@@ -26,15 +26,18 @@ filegroup(
 
 cc_library(
     name = "lib",
+    srcs = ["src/testrunner.cc"],
     hdrs = ["//:public_headers"],
+    copts = COPTS,
     strip_include_prefix = "/include",
 )
 
 cc_library(
     name = "main",
-    srcs = ["testrunner_main.cc"],
+    srcs = ["src/testrunner_main.cc"],
     hdrs = ["//:public_headers"],
     copts = COPTS,
+    deps = ["//:lib"],
     linkstatic = 1,
     strip_include_prefix = "/include",
 )
@@ -44,7 +47,7 @@ cc_test(
     size = "small",
     testonly = 1,
     srcs = [
-        "testrunner_selftest.cc",
+        "src/testrunner_selftest.cc",
         "//:public_headers",
     ],
     copts = COPTS,

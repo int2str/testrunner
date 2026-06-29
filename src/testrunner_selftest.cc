@@ -15,19 +15,30 @@
 
 #include "testrunner/testrunner.h"
 
-TEST(AssertTrue) { ASSERT_TRUE(true); }
-TEST_MUST_FAIL(AssertTrueFail) { ASSERT_TRUE(false); }
+using namespace TestRunner;
 
-TEST(AssertFalse) { ASSERT_FALSE(false); }
-TEST_MUST_FAIL(AssertFalseFail) { ASSERT_FALSE(true); }
+TEST(AssertTrue) { assert_true(true); }
+TEST_MUST_FAIL(AssertTrueFail) { assert_true(false); }
+TEST_MUST_FAIL(AssertTrueFailWithMessage) {
+  assert_true(false, "custom message");
+}
 
-TEST(ExpectEq) { EXPECT_EQ(42, 42); }
-TEST_MUST_FAIL(ExpectEqFail) { EXPECT_EQ('A', 'B'); }
+TEST(AssertFalse) { assert_false(false); }
+TEST_MUST_FAIL(AssertFalseFail) { assert_false(true); }
 
-TEST(ExpectNe) { EXPECT_NE(41, 42); }
-TEST_MUST_FAIL(ExpectNeFail) { EXPECT_NE('A', 'A'); }
+TEST(ExpectEq) { expect_eq(42, 42); }
+TEST_MUST_FAIL(ExpectEqFail) { expect_eq('A', 'B'); }
+
+TEST(ExpectNe) { expect_ne(41, 42); }
+TEST_MUST_FAIL(ExpectNeFail) { expect_ne('A', 'A'); }
 
 TEST(ExpectThrow) { EXPECT_THROW(throw true); }
 TEST_MUST_FAIL(ExpectThrowFail) { EXPECT_THROW(); }
 
-TEST_MUST_FAIL(ForcedFail) { FAIL("Forced fail"); }
+TEST(ExpectApproxEqFloat) { expect_approx_eq(1.0F, 1.00005F); }
+TEST_MUST_FAIL(ExpectApproxEqFloatFail) { expect_approx_eq(1.0F, 2.0F); }
+
+TEST(ExpectApproxEqDouble) { expect_approx_eq(1.0, 1.00005); }
+TEST_MUST_FAIL(ExpectApproxEqDoubleFail) { expect_approx_eq(1.0, 2.0); }
+
+TEST_MUST_FAIL(ForcedFail) { fail("Forced fail"); }
